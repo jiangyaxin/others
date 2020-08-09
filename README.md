@@ -1415,6 +1415,70 @@ public class StringUtil {
 }
 
 
+package cn.com.cnfic.rms.configurer;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.MethodParameter;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
+import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
+import org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor;
+
+import cn.com.cnfic.rms.result.CnficResponseCode;
+import cn.com.cnfic.rms.result.CnficServerResponse;
+
+@Configuration
+public class CnficReturnValueHandlerConfigurer implements InitializingBean {
+	@Autowired
+	private RequestMappingHandlerAdapter handlerAdapter;
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		List<HandlerMethodReturnValueHandler> list = handlerAdapter.getReturnValueHandlers();
+		List<HandlerMethodReturnValueHandler> newList = new ArrayList<>();
+		if (null != list) {
+			for (HandlerMethodReturnValueHandler valueHandler : list) {
+				if (valueHandler instanceof RequestResponseBodyMethodProcessor) {
+					HandlerMethodReturnValueHandlerProxy proxy = new HandlerMethodReturnValueHandlerProxy(valueHandler);
+					newList.add(proxy);
+				} else {
+					newList.add(valueHandler);
+				}
+			}
+		}
+
+		handlerAdapter.setReturnValueHandlers(newList);
+	}
+}
+
+class HandlerMethodReturnValueHandlerProxy implements HandlerMethodReturnValueHandler {
+	private HandlerMethodReturnValueHandler proxyObject;
+
+	public HandlerMethodReturnValueHandlerProxy(HandlerMethodReturnValueHandler proxyObject) {
+		this.proxyObject = proxyObject;
+	}
+
+	@Override
+	public boolean supportsReturnType(MethodParameter returnType) {
+		return proxyObject.supportsReturnType(returnType);
+	}
+
+	@Override
+	public void handleReturnValue(Object returnValue, MethodParameter returnType, ModelAndViewContainer mavContainer,
+			NativeWebRequest webRequest) throws Exception {
+		proxyObject.handleReturnValue(
+				CnficServerResponse.createBySuccess(CnficResponseCode.SUCCESS.getDesc(), returnValue), returnType,
+				mavContainer, webRequest);
+	}
+}
+
+
 
 
 
